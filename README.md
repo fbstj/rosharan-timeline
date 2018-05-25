@@ -1,2 +1,4 @@
-# rosharan-timeline
-for building and corroborating the history of Roshar
+# Rosharan Timeline
+
+An interface for coroborating the timeline of Roshar
+
