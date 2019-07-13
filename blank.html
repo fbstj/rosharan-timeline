@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Rosharan calednar</title>
+<script>
+/// convert ?YYYY[.M[.W[.D]]] into a [Y,M,W,D] array
+function date_from_query() {
+	const q = location.search
+	if (q.length < 5 || !q.startsWith('?'))
+		return false
+	var kv = q.substring('1').split('&')
+	return kv[0].split('.')
+}
+/// the date parts to display
+const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
+</script>
+
+<style>body { font-family: sans-serif; background-color: #EEE; }</style>
+<style>
+.calendar { width: 70%; margin: auto; background-color: white; }
+
+.calendar td { padding: .4em;  }
+
+.calendar .month-title { font-size: 120%; padding: .5em; }
+
+.calendar .prev-month { text-align: left; }
+.calendar .prev-month:before { content: '< '; }
+.calendar .next-month { text-align: right; }
+.calendar .next-month:after { content: ' >'; }
+
+.calendar .week-cell {
+	border-right: thin solid black;
+	width: 7em;
+	text-align: right;
+	padding-right: .5em;
+	height: 10em;
+}
+.calendar .day-cell {
+	border: thin dashed grey;
+	vertical-align: top;
+	width: 10em;
+}
+.calendar .week-row .year { visibility: hidden; }
+
+.calendar.hide-month-nav .prev-month,
+.calendar.hide-month-nav .next-month { visibility: hidden; }
+
+.calendar .hide-weeks .week-row { display: none; }
+
+.calendar.week .week-row:before,
+.calendar.week .week-row:after {
+	display: table-cell;
+	vertical-align: middle;
+	width: 2em;
+}
+.calendar.week .week-row:before { content: '< '; text-align: left; }
+.calendar.week .week-row:after { content: ' >'; text-align: right; }
+
+  #sidebar {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    width: 8em;
+  }
+  #sidebar .nav-row {
+    display: flex;
+    justify-content: space-between;
+    margin: .2em 0;
+  }
+
+</style>
+<template id="week_row">
+<tr class="week-row">
+<th class="week-cell">YYYY.MM.WW</th>
+<td class="day-cell">YYYY.MM.WW.1</td>
+<td class="day-cell">YYYY.MM.WW.2</td>
+<td class="day-cell">YYYY.MM.WW.3</td>
+<td class="day-cell">YYYY.MM.WW.4</td>
+<td class="day-cell">YYYY.MM.WW.5</td>
+</tr>
+</template>
+<template id="month_row">
+<tbody class="month-group">
+<tr class="month-row">
+<td class="prev-month"></td>
+<th class="month-title" colspan="4">YYYY.MM</th>
+<td class="next-month"></td>
+</tr>
+</tbody>
+</template>
+<template id="single_week_header_row">
+<tr class="header-row">
+<td class="prev-week">prev week</td>
+</tr>
+</template>
+<template id="nav_part">
+<span class="nav-row"><button class="prev">&lt;</button><button class="this">?</button><button class="next">&gt;</button></span>
+</template>
+<nav id="sidebar"></nav>
+<table id="calendar" class="calendar"><caption>Calendar for </caption></table>
+
+<script>
+/// convert @month/@week/@day date into a textual calendar name
+/// - note: if @day is 0 the week name is returned,
+///         and if @week is 0 the month name is generated
+function rosharan_date(month = false, week = false, day = false) {
+	const month_parts = ['','Jes', 'Nan', 'Chach', 'Vev', 'Palah', 'Shash', 'Betab', 'Kak', 'Tanat', 'Ish'+(week?'':'i')]
+	const week_parts =  ['', 'es',  'an',   'ach',  'ah',    'ah',   'ash',    'ab',  'ak',    'at', 'ish'+( day?'':'i')]
+	const day_parts =   ['', 'es',  'an',   'ach',  'ev',    'ah']
+	return month_parts[month||0] + week_parts[week||0] + day_parts[day||0]
+}
+
+/// format a Rosharan date as YYYY.M.W.D
+/// - note: M and W can be 10
+function rosharan_short_date(Y, M = false, W = false, D = false) { 
+	return Y + (M === false ? '' : '.'+ M
+					 + (W === false ? '' : '.'+ W
+					 + (D === false ? '' : '.'+ D
+			)))
+ }
+
+/// adds an @offset to the given Rosharan date, respecting
+/// Rosharan date wrapping rules:
+/// - passing all date parameters adds @offset days to the date
+/// - `@day = false` will add @offset weeks to the date
+/// - `@week = false` adds @offset months to the date
+/// - `@month = false` adds @offset years to the date
+function rosharan_offset(year, month = false, week = false, day = false, offset = 0) {
+	/// perform `@b += @o mod @max` and add the number of overflows into @a
+	/// - accepts negative @a, @b, @o
+	/// - ensures 0 < @b <= @max since 0 is an invalid day/week/month number
+	function distribute(a,b,o,max) {
+		let [A,B] = [a, b + o]
+		// TODO: remove loops
+		while (B < 1)   [A,B] = [A - 1, B + max]
+		while (B > max) [A,B] = [A + 1, B - max]
+		return [A,B]
+	}
+	// add @offset years to the date
+	if (!month) {
+		return [year + offset, false, false, false]
+	}
+	// add @offset months to the date,
+	if (!week) {
+		let [Y,M] = distribute(year, month, offset, 10)
+		return [Y, M, false, false]
+	}
+	// add @offset weeks to the date
+	if (!day) {
+		let [M,W] = distribute(month, week, offset, 10)
+		let [Y,MM] = distribute(year, M, 0, 10)
+		return [Y, MM, W, false]
+	}
+	// add @offset days to the date
+	else {
+		let [W,D] = distribute(week, day, offset, 5)
+		let [M,WW] = distribute(month, W, 0, 10)
+		let [Y,MM] = distribute(year, M, 0, 10)
+		return [Y, MM, WW, D]
+	}
+}
+
+/// creates a row to navigate back/forth around the date passed
+/// - control granularity by only passing partial dates
+/// - middle button will reload at the passed granularity
+/// - left and right buttons are aslo relative to the granularity
+function make_nav(year, month = false, week = false, day = false) {
+	// build new element
+	const self = nav_part.content.firstElementChild.cloneNode(true)
+	// set up the three button click events
+  for (let i = 0; i < 3; i++) {
+    const [Y,M,W,D] = rosharan_offset(year,month,week,day, i - 1)
+    const cell = self.children[i]
+    cell.setAttribute('title', rosharan_short_date(Y,M,W,D))
+    cell.setAttribute('onclick', "window.location = '?'+ this.title")
+  }
+	// fill in middle button text with appropriate scale buttons
+  const mid = self.children[1]
+  mid.innerText = day   ? 'day '  + day 
+                : week  ? 'week ' + week
+                : month ? 'month '+ month
+                :         'year ' + year
+  
+  return self
+}
+
+/// create a new #week_row and fill in the day names by using @year, @month & @week 
+function make_week(year, month, week) {
+	// build new element
+	const self = week_row.content.firstElementChild.cloneNode(true)
+  // set information in all the cells
+	let day = false
+	for (const cell of self.children) {
+		cell.setAttribute('title', rosharan_short_date(year, month, week, day))
+		cell.textContent = rosharan_date(month, week, day++) +' '
+		cell.setAttribute('onclick', "window.location = '?'+ this.title")
+	}
+  // add extra info to week cell
+  const cell = self.firstElementChild
+  cell.append(document.createElement('br'), cell.getAttribute('title'))
+  // done
+	return self
+}
+
+/// create a new #month_row and fill in the day names given the @month
+function make_month(year, month) {
+	// build new element
+	const self = month_row.content.firstElementChild.cloneNode(true)
+	// fill in heading info with month name and back/forward link
+	for (let MM = 0; MM < 3; MM++) {
+		const cell = self.firstElementChild.children[MM]
+		// determine the correct year/month numbers
+		const [Y,M] = rosharan_offset(year, month, false, false, MM-1)
+		// the three elements are given the month name
+		cell.innerText = rosharan_date(M) +' '+ Y
+		// set hover text to the short form
+		cell.title = rosharan_short_date(Y, M)
+		// add click handlers
+		cell.setAttribute('onclick', "window.location = '?'+ this.title")
+	}
+	// build each of the week rows
+	for (let WW = 1; WW <= 10; WW++) {
+		const week = make_week(year, month, WW)
+		self.append(week)
+	}
+  // done
+	return self
+}
+
+/// fill @self with the calendar for @year
+function make_year(self, year, collapse=false) {
+	for (let MM = 1; MM <= 10; MM++) {
+		const month = make_month(year, MM)
+		self.append(month)
+		//-if (collapse)
+		//-	month.classList.add('hide-weeks')
+	}
+  // hide the month nav info
+	self.classList.add('hide-month-nav')
+}
+
+if (!YEAR) {
+	// TODO: list of years
+	// TODO: main events
+  // TODO: list of event types
+} else
+if (!MONTH) {
+  // show all months in YEAR
+	calendar.caption.innerText += ' year '+ YEAR
+	make_year(calendar, +YEAR, true)
+  // setup #sidebar with just year prev/next links
+  sidebar.append(make_nav(+YEAR))
+	// TODO: add simple month navigators
+	// TODO: fill in important events
+} else
+if (!WEEK) {
+  // show all days & weeks in YEAR.MONTH
+	calendar.caption.innerText += ' month '+ rosharan_date(+MONTH) +' '+ YEAR
+	calendar.append(make_month(+YEAR, +MONTH))
+  // setup #sidebar with just year & month prev/next links
+  sidebar.append(make_nav(+YEAR))
+  sidebar.append(make_nav(+YEAR, +MONTH))
+	// TODO: fill in important events this month
+} else
+if (!DAY) {
+  // show days in YEAR.MONTH.WEEK
+	// create month top with prev/next week links
+	calendar.caption.innerText += ' week '+ rosharan_date(+MONTH,+WEEK) +' '+ YEAR
+	// create week row
+	const week = make_week(+YEAR, +MONTH, +WEEK)
+	week.addEventListener('click', (ev) => {
+		let O = 0;
+		if (ev.offsetX < week.firstElementChild.offsetLeft)
+			O = -1;
+		if (ev.offsetX > ((el)=>el.offsetLeft +el.offsetWidth)(week.lastElementChild))
+			O = +1;
+		if (O == 0) {
+			console.log('no offset for clicking event')
+			return
+		}
+		let parts = rosharan_offset(+YEAR,+MONTH,+WEEK, false, O)
+		window.location = '?' + rosharan_short_date(...parts)
+	})
+	//const Y_el = week.querySelector('.week-cell .year')
+	//Y_el.setAttribute('style', 'visibility: visible;')
+	calendar.append(week)
+	calendar.classList.add('week')
+  // setup #sidebar with prev/next for year, month & week
+  sidebar.append(make_nav(+YEAR))
+  sidebar.append(make_nav(+YEAR, +MONTH))
+  sidebar.append(make_nav(+YEAR, +MONTH, +WEEK))  
+	// TODO: fill in data about each day in this week
+} else {
+  // show YEAR.MONTH.WEEK.DAY
+	calendar.caption.innerText += ' day '+ rosharan_date(+MONTH,+WEEK,+DAY) +' '+ YEAR
+	// TODO: show single day
+  // setup #sidebar with prev/next for year, month, week & day
+  sidebar.append(make_nav(+YEAR))
+  sidebar.append(make_nav(+YEAR, +MONTH))
+  sidebar.append(make_nav(+YEAR, +MONTH, +WEEK))  
+  sidebar.append(make_nav(+YEAR, +MONTH, +WEEK, +DAY))
+	// TODO: fill in data about this day
+}
+</script>
