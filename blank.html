@@ -18,9 +18,9 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 <style>
 .calendar { width: 70%; margin: auto; background-color: white; }
 
-.calendar td { padding: .4em;  }
+.calendar td { padding: 4mm;  }
 
-.calendar .month-title { font-size: 120%; padding: .5em; }
+.calendar .month-title { font-size: 120%; padding: 5mm; }
 
 .calendar .prev-month { text-align: left; }
 .calendar .prev-month:before { content: '< '; }
@@ -29,10 +29,10 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 
 .calendar .week-cell {
 	border-right: thin solid black;
-	width: 7em;
+	width: 50mm;
 	text-align: right;
-	padding-right: .5em;
-	height: 10em;
+	padding-right: 1mm;
+	height: 50mm;
 }
 .calendar .day-cell {
 	border: thin dashed grey;
@@ -55,20 +55,22 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 .calendar.week .week-row:before { content: '< '; text-align: left; }
 .calendar.week .week-row:after { content: ' >'; text-align: right; }
 
-  #sidebar {
-    position: fixed;
-    display: flex;
-    flex-direction: column;
-    width: 8em;
-  }
-  #sidebar .nav-row {
-    display: flex;
-    justify-content: space-between;
-    margin: .2em 0;
-  }
+#sidebar {
+	position: fixed;
+	display: flex;
+	flex-direction: column;
+	width: 8em;
+}
+#sidebar .nav-row {
+	display: flex;
+	justify-content: space-between;
+	margin: .2em 0;
+}
 
 </style>
+
 <template id="week_row">
+<!-- template to build a row for a week of 5 days -->
 <tr class="week-row">
 <th class="week-cell">YYYY.MM.WW</th>
 <td class="day-cell">YYYY.MM.WW.1</td>
@@ -79,6 +81,7 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 </tr>
 </template>
 <template id="month_row">
+<!-- template for creating months, requires 10 #week_row to be inserted -->
 <tbody class="month-group">
 <tr class="month-row">
 <td class="prev-month"></td>
@@ -87,16 +90,17 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 </tr>
 </tbody>
 </template>
-<template id="single_week_header_row">
-<tr class="header-row">
-<td class="prev-week">prev week</td>
-</tr>
-</template>
+
 <template id="nav_part">
+<!-- template for creating navigation around the calendar -->
 <span class="nav-row"><button class="prev">&lt;</button><button class="this">?</button><button class="next">&gt;</button></span>
 </template>
+
 <nav id="sidebar"></nav>
-<table id="calendar" class="calendar"><caption>Calendar for </caption></table>
+
+<table id="calendar" class="calendar">
+<caption>Calendar for <output name="scope"></output> <output name="date"></output> <output name="year"></output></caption>
+</table>
 
 <script>
 /// convert @month/@week/@day date into a textual calendar name
@@ -238,6 +242,13 @@ function make_year(self, year, collapse=false) {
 	self.classList.add('hide-month-nav')
 }
 
+/// set the calendar scope text
+function change_calendar_scope(scope) {
+	calendar.caption.children.namedItem('scope').value = scope
+	calendar.caption.children.namedItem('year').value = YEAR
+	calendar.caption.children.namedItem('date').value = rosharan_date(MONTH, WEEK, DAY)
+}
+
 if (!YEAR) {
 	// TODO: list of years
 	// TODO: main events
@@ -245,7 +256,7 @@ if (!YEAR) {
 } else
 if (!MONTH) {
   // show all months in YEAR
-	calendar.caption.innerText += ' year '+ YEAR
+	change_calendar_scope('year')
 	make_year(calendar, +YEAR, true)
   // setup #sidebar with just year prev/next links
   sidebar.append(make_nav(+YEAR))
@@ -254,7 +265,7 @@ if (!MONTH) {
 } else
 if (!WEEK) {
   // show all days & weeks in YEAR.MONTH
-	calendar.caption.innerText += ' month '+ rosharan_date(+MONTH) +' '+ YEAR
+	change_calendar_scope('month')
 	calendar.append(make_month(+YEAR, +MONTH))
   // setup #sidebar with just year & month prev/next links
   sidebar.append(make_nav(+YEAR))
@@ -264,7 +275,7 @@ if (!WEEK) {
 if (!DAY) {
   // show days in YEAR.MONTH.WEEK
 	// create month top with prev/next week links
-	calendar.caption.innerText += ' week '+ rosharan_date(+MONTH,+WEEK) +' '+ YEAR
+	change_calendar_scope('week')
 	// create week row
 	const week = make_week(+YEAR, +MONTH, +WEEK)
 	week.addEventListener('click', (ev) => {
@@ -291,7 +302,7 @@ if (!DAY) {
 	// TODO: fill in data about each day in this week
 } else {
   // show YEAR.MONTH.WEEK.DAY
-	calendar.caption.innerText += ' day '+ rosharan_date(+MONTH,+WEEK,+DAY) +' '+ YEAR
+	change_calendar_scope('day')
 	// TODO: show single day
   // setup #sidebar with prev/next for year, month, week & day
   sidebar.append(make_nav(+YEAR))
