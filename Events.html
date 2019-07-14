@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>all Rosharan events</title>
+
+<script src="./user-file-buttons.js"></script>
+<script src="./purse.js"></script>
+
+<style>body { font-family: sans-serif; background-color: #EEE; }</style>
+<style>
+#sidebar { float: left; }
+#sidebar>* { display: block; margin: 1mm; }
+#events { width: 70%; margin: auto; background-color: white; }
+.event { padding-top: 3mm; padding-bottom: 3mm; border-top: thin solid black; }
+</style>
+
+<nav id="sidebar">
+<a href="./blank.html"><button>blank calendar</button></a>
+<a href="./Event.html"><button>all events</button></a>
+<button onclick="add_event()">new event</button>
+</nav>
+
+<ul id="events">
+<h1>Events</h1>
+</ul>
+
+<template id="event_row">
+<li class="event">
+<output name="id"></output>
+<output name="date"></output>
+<output name="event"></output>
+<output name="source"></output>
+<output name="relative"></output>
+<button onclick="edit_event(this.parentElement, event)">edit</button>
+</li>
+</template>
+
+<script>// persistent data store
+// setup data store
+const purse = new Purse('Events')
+if (!purse.data) {
+	purse.data = []
+	purse.save(true)
+}
+/// determine the next id to insert into the list
+Object.defineProperty(purse, 'next_id', {
+	value: function() {
+		const max = this.data.map(ev => +ev.id.substring(1)).sort().pop()
+		return 'R' + (max + 1)
+	}
+})
+// setup import & export buttons
+const importer = purse.make_import_button()
+const exporter = purse.make_export_button()
+sidebar.append(importer, ' ', exporter)
+</script>
+
+<script>
+
+/// gather all elements that have `name` attributes
+Element.prototype.namedChildren = function() {
+	return this.querySelectorAll('[name]')
+}
+/// gather the first element with the given @name
+Element.prototype.namedChild = function(name) {
+	return this.querySelector('[name="'+ name +'"]')
+}
+
+/// make sure that a row is in the list showing the passed data
+function show_row(data) {
+	let el = events.namedChild(data.id)
+	if (!el) {
+		el = event_row.content.firstElementChild.cloneNode(true)
+		events.append(el)
+		el.setAttribute('name', data.id)
+	}
+	// make sure all data is shown
+	for (const kid of el.namedChildren()) {
+		kid.value = data[kid.name] || ''
+	}
+}
+
+/// add handler so rows show up when added/edited/imported
+purse.addEventListener('loaded', function (ev) {
+	purse.data.sort()
+	purse.data.forEach(show_row)
+})
+
+/// handle the import event to purge any removed events
+purse.addEventListener('imported', function (ev) {
+	const rows = [... events.querySelectorAll('li[name]')]
+	for (const row of rows) {
+		const data = purse.data.find(ev => row.getAttribute('name') == ev.id)
+		if (data) { continue }
+		console.warn('removing deleted:', row)
+		row.remove()
+	}
+})
+
+purse.load(true)
+
+</script>
+
+
+<dialog id="change_event">
+<span type="cancel" onclick="change_event.close()">X</span>
+<h1>Event <output name="id"></output></h1>
+<form method="dialog">
+<label>Date: <input name="date"></label>
+<label>Event: <input name="event" required></label>
+<label>Source: <input name="source"></label>
+<label>Relative: <input name="relative"></label>
+<br><button>Save</button>
+</form>
+</dialog>
+<script>
+change_event.form = change_event.querySelector('form')
+/// handle saving the changes to the database
+change_event.addEventListener('submit', function (ev) {
+	console.debug('event:', 'submitting some data from', this.form)
+	// TODO: grab data and run with it
+	const id = this.namedChild('id').value
+	const data = {}
+	for (const kid of this.form.namedChildren()) {
+		if (!kid.value) continue
+		data[kid.name] = kid.value
+	}
+	if (id) {
+		// TODO: diff? to bail before pointless save
+		console.debug('save changes to "'+ id +'" event:', data)
+		const old = purse.data.find(ev => ev.id == id)
+		for (const [key, value] of Object.entries(data)) {
+			old[key] = data[key]
+		}
+	} else {
+		console.debug('add new event:', data)
+		// generate ID?
+		data.id = purse.next_id()
+		purse.data.push(data)
+		purse.dirty = true
+		purse.save()
+	}
+})
+/// handle clearing the data from the form
+change_event.addEventListener('close', function (ev) {
+	console.debug('event:', 'clearing data from', this.form)
+	// TODO: reset all the form values
+	for (const kid of change_event.namedChildren()) {
+		kid.value = ''
+	}
+})
+
+
+function edit_event(row, ev) {
+	// show row data on form
+	for (const inp of change_event.namedChildren()) {
+		const out = row.namedChild(inp.name)
+		inp.value = out.value
+	}
+	// show form
+	change_event.showModal()
+}
+
+/// show add Element form
+function add_event() {
+	// clear previous data
+	for (const el of change_event.namedChildren()) {
+		el.value = ''
+	}
+	// make date required
+	const date_el = change_event.namedChild('date')
+	date_el.required = true
+	date_el.removeAttribute('readonly')
+	// make src/el optional
+	const src_el = change_event.namedChild('source')
+	src_el.required = false
+	const rel_el = change_event.namedChild('relative')
+	rel_el.required = false
+	// show form
+	change_event.showModal()
+}
+
+/// show form to add new event relative to @ev_id event
+function add_relative_event(ev_id) {
+	// clear previous data
+	for (const el of change_event.namedChildren()) {
+		el.value = ''
+	}
+	// make date required
+	const date_el = change_event.namedChild('date')
+	date_el.required = false
+	date_el.setAttribute('readonly', '')
+	// make src/el optional
+	const src_el = change_event.namedChild('source')
+	src_el.required = false
+	src_el.value = ev_id
+	const rel_el = change_event.namedChild('relative')
+	rel_el.required = false
+	// show form
+	change_event.showModal()
+}
+
+
+</script>
+<style>
+#change_event {
+	width: 50%;
+}
+#change_event [type="cancel"] { float: right; color: red; }
+#change_event label { display: inline-block; padding: 1mm; }
+</style>
