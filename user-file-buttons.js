@@ -53,7 +53,7 @@ function make_export_element(is_async = false) {
 	self.append(button, link)
 	/// set up the url for downloading 
 	self.attach_file = function(name, data) {
-		const file = new Blob([ JSON.stringify(data) ], 'application/json')
+		const file = new Blob([ JSON.stringify(data) ], { type: 'application/json', })
 		window.URL.revokeObjectURL(link.href)
 		link.download = name
 		link.href = window.URL.createObjectURL(file)
@@ -66,11 +66,11 @@ function make_export_element(is_async = false) {
 		button.disabled = true
 	}
 	// setup button click handler
-	button.addEventHandler('click', function(ev) {
+	button.addEventListener('click', function(ev) {
 		// configured to be async so execute the export handler
 		if (self.hasAttribute('async')) {
 			// NOTE: this handler should call self.attach_file()
-			self.dispatchEvent('export')
+			self.dispatchEvent(new Event('export'))
 			// TODO: check this happens sync & before generated click
 		}
 		if (!link.href) {
