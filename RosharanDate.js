@@ -44,6 +44,27 @@ class RosharanDate {
 	get date_format() {
 		return [this.year, this.month, this.week, this.day].filter(a => !!a).join('.')
 	}
+	
+	/// iterate over all days in the current date kind
+	all_days() {
+		const DAYS = [1,2,3,4,5]
+		const WEEKS = [1,2,3,4,5,6,7,8,9,10]
+		const MONTHS = [1,2,3,4,5,6,7,8,9,10]
+		if (this.kind === 'day') { return [this] }
+		if (this.kind === 'week') {
+			const [Y,M,W] = [this.year, this.month, this.week]
+			return DAYS.map(day => new RosharanDate(Y, M, W, day))
+		}
+		if (this.kind === 'month') {
+			const [Y,M] = [this.year, this.month]
+			return WEEKS.flatMap(week => new RosharanDate(Y, M, week).all_days())
+		}
+		if (this.kind === 'year') {
+			const Y = this.year
+			return MONTHS.flatMap(month => new RosharanDate(Y, month).all_days())
+		}
+		console.error('unsupported kind:', this.kind)
+	}
 
 	/// attempt to create a date from a YYYY.M.W.D formatted string
 	static from_string(text) {
@@ -102,7 +123,7 @@ class RosharanDate {
 			let [Y,MM] = distribute(this.year, M, 0, 10)
 			return new RosharanDate(Y, MM, WW, D)
 		}
-		console.error('unsupported kind', kind)
+		console.error('unsupported kind:', kind)
 		return this
 	}
 }
