@@ -35,7 +35,7 @@ class Purse extends EventTarget {
 		const self = make_import_element()
 		self.picker.setAttribute('accept', '.json')
 		self.picker.addEventListener('change', async function (ev) {
-			console.warn('importing', this.files, 'into Purse', purse)
+			console.debug('importing', this.files, 'into Purse', purse)
 			purse.data = await this.files[0].json()
 			purse.dirty = true
 			purse.save()
@@ -49,9 +49,10 @@ class Purse extends EventTarget {
 	make_export_button() {
 		const purse = this
 		const self = make_export_element(true)
+		const file_name = 'data.json'
 		self.addEventListener('export', function (ev) {
-			console.warn('exporting', purse.data) 
-			self.attach_file('data.json', purse.data)
+			console.debug('exporting', purse.data, 'as', file_name) 
+			self.attach_file(file_name, purse.data)
 		})
 		// output 'exported' event when the element does
 		self.addEventListener('exported', _ => purse.dispatchEvent(new Event('exported')))
