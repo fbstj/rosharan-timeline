@@ -75,8 +75,10 @@ function make_export_element(is_async = false) {
 		}
 		if (!link.href) {
 			console.warn('nothing to download')
+		} else {
+			link.click()
+			self.dispatchEvent(new Event('exported'))
 		}
-		link.click()
 	})
 	// helper accessors
 	return Object.freeze(self)
