@@ -54,7 +54,7 @@ class Purse extends EventTarget {
 			self.attach_file('data.json', purse.data)
 		})
 		// output 'exported' event when the element does
-		self.addEventListener('exported', _ => purse.dispatchEvent('exported'))
+		self.addEventListener('exported', _ => purse.dispatchEvent(new Event('exported')))
 		return self
 	}
 }
