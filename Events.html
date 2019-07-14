@@ -44,6 +44,7 @@ if (!purse.data) {
 /// determine the next id to insert into the list
 Object.defineProperty(purse, 'next_id', {
 	value: function() {
+		if (this.data.length == 0) return 'R1'
 		const max = this.data.map(ev => +ev.id.substring(1)).sort().pop()
 		return 'R' + (max + 1)
 	}
