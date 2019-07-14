@@ -3,9 +3,10 @@ console.debug('# purse.js')
 // needs: user-file-buttons.js
 
 /// a wrapper around accessing localStorage
-class Purse {
+class Purse extends EventTarget {
 	/// create the wrapper to access the localStorage key @name
 	constructor(name) {
+		super()
 		this.name = name
 		this.data = null
 		this.load(true)
@@ -16,6 +17,8 @@ class Purse {
 		if (force || this.dirty) {
 			this.data = JSON.parse(localStorage.getItem(this.name))
 			this.dirty = false
+			// TODO: output 'loaded' event
+			this.dispatchEvent(new Event('loaded'))
 		}
 	}
 	/// persist this.store
@@ -34,7 +37,10 @@ class Purse {
 		self.picker.addEventListener('change', async function (ev) {
 			console.warn('importing', this.files, 'into Purse', purse)
 			purse.data = await this.files[0].json()
-			purse.save(true)
+			purse.dirty = true
+			purse.save()
+			// output 'imporded' event
+			purse.dispatchEvent(new Event('imported'))
 		})
 		return self
 	}
@@ -47,6 +53,8 @@ class Purse {
 			console.warn('exporting', purse.data) 
 			self.attach_file('data.json', purse.data)
 		})
+		// output 'exported' event when the element does
+		self.addEventListener('exported', _ => purse.dispatchEvent('exported'))
 		return self
 	}
 }
