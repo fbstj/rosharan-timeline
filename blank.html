@@ -66,7 +66,6 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 	justify-content: space-between;
 	margin: .2em 0;
 }
-
 </style>
 
 <template id="week_row">
@@ -80,6 +79,7 @@ const [YEAR,MONTH,WEEK,DAY] = date_from_query() || [ false, false, false, false]
 <td class="day-cell">YYYY.MM.WW.5</td>
 </tr>
 </template>
+
 <template id="month_row">
 <!-- template for creating months, requires 10 #week_row to be inserted -->
 <tbody class="month-group">
@@ -194,9 +194,14 @@ function make_week(year, month, week) {
   // set information in all the cells
 	let day = false
 	for (const cell of self.children) {
+		// setup cell with display information
 		cell.setAttribute('title', rosharan_short_date(year, month, week, day))
-		cell.textContent = rosharan_date(month, week, day++) +' '
+		// TODO: build the display date into a title element?
+		cell.textContent = rosharan_date(month, week, day) +' '
+		// TODO: improve the below action
 		cell.setAttribute('onclick', "window.location = '?'+ this.title")
+		// move to next @day for next loop
+		day++
 	}
   // add extra info to week cell
   const cell = self.firstElementChild
