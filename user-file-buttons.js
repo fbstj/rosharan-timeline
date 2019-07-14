@@ -18,6 +18,21 @@ function make_import_element() {
 	return Object.freeze(self)
 }
 
+/// return a promise which wraps the FileReader stuff
+function read_text_file(file) { return new Promise((resolve, reject) => {
+	// file reader junk
+	const reader = new FileReader
+	reader.onload = function (ev) { resolve(reader.result) }
+	try {
+		reader.readAsText(file)
+	} catch(e) {
+		reject(e)
+	}
+})}
+/// attach a read_text_file 
+File.prototype.text = function() { return read_text_file(this) }
+File.prototype.json = function() { return this.text().then(txt => JSON.parse(txt)) }
+
 /// creates the button which opens the file exporter
 function make_export_element() {
 	let gen_data = () => console.error('export:', 'no file loader');
